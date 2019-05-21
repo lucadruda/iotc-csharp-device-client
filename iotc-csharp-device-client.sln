@@ -3,11 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.28803.452
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "iotc-csharp-device-client", "iotc-csharp-device-client\iotc-csharp-device-client.csproj", "{9084CCB6-F58B-487A-BDD6-0B0214F99177}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "iotc-csharp-device-client", "src\iotc-csharp-device-client.csproj", "{A25DFF90-EBC7-413C-BC35-6C9682156DF7}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{CF06FB9A-4FED-430A-A3DC-5CE9BA64A55E}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{DF6C9472-C539-46A8-A46F-3A8A5E9C4B80}"
+	ProjectSection(SolutionItems) = preProject
+		samples\TelemetrySymKey\TelemetrySymKey.csproj = samples\TelemetrySymKey\TelemetrySymKey.csproj
+	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TelemetrySymKey", "TelemetrySymKey\TelemetrySymKey.csproj", "{1BA7DCA9-1E12-432C-81A5-62257F1723F4}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{B7C1C641-433A-4858-8EB4-2C8857F2603F}"
+	ProjectSection(SolutionItems) = preProject
+		samples\TelemetrySymKey\TelemetrySymKey.csproj = samples\TelemetrySymKey\TelemetrySymKey.csproj
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,20 +21,13 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{9084CCB6-F58B-487A-BDD6-0B0214F99177}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9084CCB6-F58B-487A-BDD6-0B0214F99177}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9084CCB6-F58B-487A-BDD6-0B0214F99177}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9084CCB6-F58B-487A-BDD6-0B0214F99177}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1BA7DCA9-1E12-432C-81A5-62257F1723F4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1BA7DCA9-1E12-432C-81A5-62257F1723F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1BA7DCA9-1E12-432C-81A5-62257F1723F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1BA7DCA9-1E12-432C-81A5-62257F1723F4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A25DFF90-EBC7-413C-BC35-6C9682156DF7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A25DFF90-EBC7-413C-BC35-6C9682156DF7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A25DFF90-EBC7-413C-BC35-6C9682156DF7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A25DFF90-EBC7-413C-BC35-6C9682156DF7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{1BA7DCA9-1E12-432C-81A5-62257F1723F4} = {CF06FB9A-4FED-430A-A3DC-5CE9BA64A55E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {391AADBF-ADA3-4A28-A890-F307DD42FBDB}
