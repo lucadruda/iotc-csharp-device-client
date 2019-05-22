@@ -141,13 +141,11 @@ namespace iotc_csharp_device_client
             callback?.Invoke("Disconnected");
         }
 
-        /**
-         * Register a device in IoTCentral using authentication provided at construction
-         * time
-         * 
-         * @return DeviceClient instance
-         * @throws IoTCentralException
-         */
+        /// <summary>
+        /// Register a device in IoTCentral using authentication provided at 
+        /// </summary>
+        ///  /// <exception cref="IoTCentralException">Thrown when Registration failed</exception>
+        /// <returns>DeviceClient instance</returns>
         private async Task<DeviceClient> Register()
         {
             if (AuthenticationType == IoTCConnect.SYMM_KEY)
@@ -162,9 +160,14 @@ namespace iotc_csharp_device_client
             // this.logger).Register();
         }
 
-
+        /// <summary>
+        /// Connect device to IoTCentral application
+        /// </summary>
+        /// <exception cref="IoTCentralException">Thrown when connection failed</exception>
+        /// <returns>task</returns>
         public async Task Connect()
         {
+
             deviceClient = await Register();
 
             await deviceClient.OpenAsync();
@@ -176,7 +179,6 @@ namespace iotc_csharp_device_client
                 await deviceClient.SetDesiredPropertyUpdateCallbackAsync((DesiredPropertyUpdateCallback)callbacks[IoTCEvents.SettingsUpdated], null);
 
             this.Logger.Log("Device connected");
-
         }
 
 

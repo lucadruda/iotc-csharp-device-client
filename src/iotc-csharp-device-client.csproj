@@ -3,6 +3,14 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>iotc_csharp_device_client</RootNamespace>
+    <AssemblyName>Microsoft.Azure.IoTCentral.Devices.Client</AssemblyName>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Luca Druda</Authors>
+    <Company>GitHub</Company>
+    <Product>Azure IoT Central</Product>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageId>IoTCentral.Devices.Client</PackageId>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,6 +19,13 @@
     <PackageReference Include="Microsoft.Azure.Devices.Provisioning.Transport.Amqp" Version="1.1.7" />
     <PackageReference Include="Microsoft.Azure.Devices.Provisioning.Transport.Http" Version="1.1.5" />
     <PackageReference Include="Microsoft.Azure.Devices.Provisioning.Transport.Mqtt" Version="1.1.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
