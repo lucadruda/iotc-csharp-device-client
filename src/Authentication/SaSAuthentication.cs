@@ -5,6 +5,8 @@ using Microsoft.Azure.Devices.Client;
 using Microsoft.Azure.Devices.Provisioning.Client;
 using Microsoft.Azure.Devices.Provisioning.Client.Transport;
 using Microsoft.Azure.Devices.Shared;
+using MQTTnet.Client;
+using MQTTnet.Client.Options;
 using System;
 using System.Security.Cryptography;
 using System.Text;
@@ -21,7 +23,7 @@ namespace iotc_csharp_device_client.Authentication
 
         public SasAuthentication(IoTCClient client) => Client = client;
 
-        public async Task<DeviceClient> RegisterWithSaSKey(string symKey)
+        public async Task<MqttCredentials> RegisterWithSaSKey(string symKey)
         {
             if (string.IsNullOrEmpty(Client.ScopeId) || string.IsNullOrEmpty(symKey) || string.IsNullOrEmpty(Client.Id))
             {
@@ -30,7 +32,7 @@ namespace iotc_csharp_device_client.Authentication
             return await this.RegisterWithDeviceKey(this.ComputeKey(Convert.FromBase64String(symKey), Client.Id));
         }
 
-        public async Task<DeviceClient> RegisterWithDeviceKey(string deviceKey)
+        public async Task<MqttCredentials> RegisterWithDeviceKey(string deviceKey)
         {
             if (string.IsNullOrEmpty(Client.ScopeId) || string.IsNullOrEmpty(deviceKey) || string.IsNullOrEmpty(Client.Id))
             {
@@ -47,9 +49,21 @@ namespace iotc_csharp_device_client.Authentication
                     {
                         throw new IoTCentralException($"Provisioning failed: {result.Status.ToString()} - {result.ErrorMessage}");
                     }
-                    return DeviceClient.Create(result.AssignedHub, new DeviceAuthenticationWithRegistrySymmetricKey(Client.Id, deviceKey));
+                    var username = $"{result.AssignedHub}/{Client.Id}/api-version=2018-06-30";
+                    var password = GetAuth(result.AssignedHub, "devices", deviceKey);
+                    return new MqttCredentials(username, password, result.AssignedHub);
                 }
             }
+        }
+
+        private string GetAuth(string hostname, string target, string deviceKey)
+        {
+            long utcTimeInMilliseconds = DateTime.UtcNow.Ticks / 10000;
+            long expires = ((utcTimeInMilliseconds + (DEFAULT_EXPIRATION * 1000)) / 1000);
+            string sr = $"{hostname}%2f{target}%2f{this.Client.Id}";
+            string sigNoEncode = this.ComputeKey(Convert.FromBase64String(deviceKey), $"{sr}\n{expires.ToString()}");
+            string sigEncoded = Uri.EscapeDataString(sigNoEncode);
+            return $"SharedAccessSignature sr={sr}&sig={sigEncoded}&se={expires.ToString()}";
         }
 
         private string ComputeKey(byte[] masterKey, string registrationId)

@@ -111,6 +111,14 @@ public interface IIoTCClient
      * @param event    The event to listen to.
      * @param callback The callback to execute when the event is triggered
      */
-    void on(IoTCEvents iotcevent, Delegate callback);
+    void on(IoTCEvents iotcevent, Func<object, string> callback);
+
+    /**
+ * Listen to events.
+ * 
+ * @param event    The event to listen to.
+ * @param callback The callback to execute when the event is triggered
+ */
+    void on(IoTCEvents iotcevent, Func<object, Task<string>> callback);
 
 }

@@ -15,7 +15,7 @@ namespace iotc_csharp_device_client.Authentication
 
         public IoTCClient Client { get; private set; }
 
-        public async Task<DeviceClient> Register(X509Certificate2 certificate)
+        public async Task<string> Register(X509Certificate2 certificate)
         {
             if (certificate == null || string.IsNullOrEmpty(Client.Id))
             {
@@ -32,7 +32,7 @@ namespace iotc_csharp_device_client.Authentication
                     {
                         throw new IoTCentralException($"Provisioning failed: {result.Status.ToString()} - {result.ErrorMessage}");
                     }
-                    return DeviceClient.Create(result.AssignedHub, new DeviceAuthenticationWithX509Certificate(Client.Id, certificate));
+                    return result.AssignedHub;
                 }
             }
         }

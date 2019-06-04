@@ -1,5 +1,6 @@
 ﻿using iotc_csharp_device_client;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TelemetrySymKey
@@ -18,6 +19,7 @@ namespace TelemetrySymKey
                 temperature = random.Next(0, 100);
                 pressure = random.Next(300, 1000);
                 client.SendTelemetry($"{{\"temp\":{temperature},\"pressure\":{pressure}}}", null).Wait();
+                Thread.Sleep(5000);
             }
 
 

@@ -2,13 +2,20 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 using iotc_csharp_device_client.Authentication;
 using iotc_csharp_device_client.enums;
+using iotc_csharp_device_client.Models;
 using Microsoft.Azure.Devices.Client;
 using Microsoft.Azure.Devices.Shared;
+using MQTTnet;
+using MQTTnet.Client;
+using MQTTnet.Client.Connecting;
+using MQTTnet.Client.Options;
+using MQTTnet.Client.Receiving;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace iotc_csharp_device_client
@@ -21,6 +28,7 @@ namespace iotc_csharp_device_client
         const string DPS_DEFAULT_ENDPOINT = "global.azure-devices-provisioning.net";
         const string DPS_DEFAULT_API = "2018-09-01-preview";
         private DeviceClient deviceClient;
+        private IMqttClient mqttClient;
 
         private Dictionary<IoTCEvents, Delegate> callbacks;
 
@@ -50,6 +58,7 @@ namespace iotc_csharp_device_client
             Id = id;
             ScopeId = scopeId;
             AuthenticationType = authenticationType;
+            mqttClient = new MqttFactory().CreateMqttClient();
             if (AuthenticationType == IoTCConnect.SYMM_KEY || AuthenticationType == IoTCConnect.DEVICE_KEY)
             {
                 SasKey = (string)options;
@@ -146,17 +155,18 @@ namespace iotc_csharp_device_client
         /// </summary>
         ///  /// <exception cref="IoTCentralException">Thrown when Registration failed</exception>
         /// <returns>DeviceClient instance</returns>
-        private async Task<DeviceClient> Register()
+        private async Task<MqttCredentials> Register()
         {
             if (AuthenticationType == IoTCConnect.SYMM_KEY)
             {
                 return await new SasAuthentication(this).RegisterWithSaSKey(SasKey);
             }
-            else if (AuthenticationType == IoTCConnect.DEVICE_KEY)
+            //else if (AuthenticationType == IoTCConnect.DEVICE_KEY)
+            else
             {
                 return await new SasAuthentication(this).RegisterWithDeviceKey(SasKey);
             }
-            return await new CertAuthentication(this).Register(Certificate.GetCertificate());
+            //return await new CertAuthentication(this).Register(Certificate.GetCertificate());
             // this.logger).Register();
         }
 
@@ -167,18 +177,71 @@ namespace iotc_csharp_device_client
         /// <returns>task</returns>
         public async Task Connect()
         {
+            Protocol = TransportType.Http1;
+            var creds = await Register();
+            var options = new MqttClientOptionsBuilder()
+                .WithClientId(Id)
+                .WithTcpServer(creds.HostName)
+                .WithCredentials(creds.UserName, creds.Password)
+                .WithTls()
+                .WithCleanSession()
+                .Build();
+            mqttClient.UseConnectedHandler(async e =>
+            {
+                //connected
+                if (callbacks.ContainsKey(IoTCEvents.ConnectionStatus))
+                {
+                    callbacks[IoTCEvents.ConnectionStatus].DynamicInvoke(e);
+                }
 
-            deviceClient = await Register();
+                // Subscribe to a topic
+                await mqttClient.SubscribeAsync(new TopicFilterBuilder().WithTopic($"devices/{Id}/messages/devicebound/#").Build());
+                await mqttClient.SubscribeAsync(new TopicFilterBuilder().WithTopic($"devices/{Id}/messages/events/#").Build());
+                await mqttClient.SubscribeAsync(new TopicFilterBuilder().WithTopic($"$iothub/twin/res/#").Build());
+                await mqttClient.SubscribeAsync(new TopicFilterBuilder().WithTopic($"$iothub/twin/PATCH/properties/desired/#").Build());
+                await mqttClient.SubscribeAsync(new TopicFilterBuilder().WithTopic($"$iothub/methods/POST/#").Build());
 
-            await deviceClient.OpenAsync();
-            if (callbacks.ContainsKey(IoTCEvents.ConnectionStatus))
-                deviceClient.SetConnectionStatusChangesHandler((ConnectionStatusChangesHandler)callbacks[IoTCEvents.ConnectionStatus]);
-            if (callbacks.ContainsKey(IoTCEvents.Command))
-                await deviceClient.SetMethodDefaultHandlerAsync((MethodCallback)callbacks[IoTCEvents.Command], null);
-            if (callbacks.ContainsKey(IoTCEvents.SettingsUpdated))
-                await deviceClient.SetDesiredPropertyUpdateCallbackAsync((DesiredPropertyUpdateCallback)callbacks[IoTCEvents.SettingsUpdated], null);
+                // get twin
+                await mqttClient.PublishAsync("$iothub/twin/GET/?$rid=0");
+                mqttClient.UseApplicationMessageReceivedHandler(async (m) =>
+                  {
+                      if (m.ApplicationMessage.Topic.StartsWith(SettingsTopic))
+                      {
+                          var fields = new Regex(@"\$iothub/twin/PATCH/properties/desired/\?\$version=([\d]+)$").Match(m.ApplicationMessage.Topic).Groups;
+                          if (fields.Count > 1)
+                          {
+                              if (callbacks.ContainsKey(IoTCEvents.SettingsUpdated))
+                              {
+                                  JObject obj = JObject.Parse(Encoding.UTF8.GetString(m.ApplicationMessage.Payload));
+                                  foreach (var property in obj.Properties())
+                                  {
+                                      if (property.Name == "$version")
+                                          continue;
+                                      callbacks[IoTCEvents.SettingsUpdated].DynamicInvoke(new Setting(property.Name, property.Value.Value<string>("value"), int.Parse(fields[1].Value)));
+                                  }
 
-            this.Logger.Log("Device connected");
+                              }
+                          }
+                      }
+                      else if (m.ApplicationMessage.Topic.StartsWith(CommandsTopic))
+                      {
+                          var fields = new Regex(@"\$iothub/methods/POST/([\S]+)/\?\$rid=([\d]+)$").Match(m.ApplicationMessage.Topic).Groups;
+                          if (fields.Count > 2)
+                          {
+                              await mqttClient.PublishAsync($"$iothub/methods/res/0/?$rid={fields[2].Value}");
+
+                              if (callbacks.ContainsKey(IoTCEvents.Command))
+                              {
+                                  callbacks[IoTCEvents.Command].DynamicInvoke(new Command(fields[1].Value, Encoding.UTF8.GetString(m.ApplicationMessage.Payload), fields[2].Value));
+                              }
+                          }
+                      }
+                  });
+            });
+            await mqttClient.ConnectAsync(options);
+
+
+            this.Logger.Log($"Device connected to hub {creds.HostName}");
         }
 
 
@@ -196,22 +259,29 @@ namespace iotc_csharp_device_client
 
         public async Task SendEvent(object payload, Action<object> callback)
         {
-            JObject jsonObj;
+            string body;
             if (payload.GetType() == typeof(string))
             {
-                jsonObj = JObject.Parse((string)payload);
+                body = (string)payload;
             }
             else if (payload.GetType() == typeof(JObject))
             {
-                jsonObj = (JObject)payload;
+                body = ((JObject)payload).ToString(Formatting.None);
             }
             else
             {
-                jsonObj = JObject.Parse(JsonConvert.SerializeObject(payload));
+                body = JsonConvert.SerializeObject(payload);
             }
-            Message msg = new Message(Encoding.UTF8.GetBytes(jsonObj.ToString(Formatting.None)));
-            await deviceClient.SendEventAsync(msg);
-            Logger.Log($"Message: {jsonObj.ToString(Formatting.None)}");
+            var message = new MqttApplicationMessageBuilder()
+                .WithTopic($"devices/{Id}/messages/events/")
+                .WithPayload(body)
+                .WithAtMostOnceQoS()
+                .WithRetainFlag()
+                .Build();
+
+            await mqttClient.PublishAsync(message);
+
+            Logger.Log($"Message: {body}");
             callback?.Invoke("Event sent");
 
         }
@@ -219,33 +289,53 @@ namespace iotc_csharp_device_client
 
         public async Task SendProperty(object payload, Action<object> callback)
         {
-            TwinCollection propertiesSet = new TwinCollection();
-            JObject jsonObj;
+            string body;
             if (payload.GetType() == typeof(string))
             {
-                jsonObj = JObject.Parse((string)payload);
+                body = (string)payload;
             }
             else if (payload.GetType() == typeof(JObject))
             {
-                jsonObj = (JObject)payload;
+                body = ((JObject)payload).ToString(Formatting.None);
             }
             else
             {
-                jsonObj = JObject.Parse(JsonConvert.SerializeObject(payload));
+                body = JsonConvert.SerializeObject(payload);
             }
+            var message = new MqttApplicationMessageBuilder()
+                .WithTopic($"$iothub/twin/PATCH/properties/reported/?$rid={new Random().Next(0, 10)}")
+                .WithPayload(body)
+                .WithAtMostOnceQoS()
+                .WithRetainFlag()
+                .Build();
 
-            foreach (var obj in jsonObj)
-            {
-                propertiesSet[obj.Key] = obj.Value;
-            }
+            await mqttClient.PublishAsync(message);
 
-            await deviceClient.UpdateReportedPropertiesAsync(propertiesSet);
-            callback?.Invoke("Properties sent");
+            Logger.Log($"Message: {body}");
+            callback?.Invoke("Event sent");
         }
 
 
 
-        public void on(IoTCEvents iotcEvent, Delegate callback)
+        public void on(IoTCEvents iotcEvent, Func<object, string> callback)
+        {
+            switch (iotcEvent)
+            {
+                case IoTCEvents.ConnectionStatus:
+                    callbacks[IoTCEvents.ConnectionStatus] = callback;
+                    break;
+                case IoTCEvents.SettingsUpdated:
+                    callbacks[IoTCEvents.SettingsUpdated] = callback;
+                    break;
+                case IoTCEvents.Command:
+                    callbacks[IoTCEvents.Command] = callback;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        public void on(IoTCEvents iotcEvent, Func<object, Task<string>> callback)
         {
             switch (iotcEvent)
             {
@@ -269,6 +359,9 @@ namespace iotc_csharp_device_client
             ApiVersion = apiversion;
             Logger.Log("API version changed to: " + apiversion);
         }
+
+        private string SettingsTopic { get { return "$iothub/twin/PATCH/properties/desired/"; } }
+        private string CommandsTopic { get { return $"$iothub/methods/POST/"; } }
 
     }
 }

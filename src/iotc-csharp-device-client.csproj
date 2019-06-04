@@ -10,7 +10,7 @@
     <Product>Azure IoT Central</Product>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageId>IoTCentral.Devices.Client</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.1.0-alpha</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +19,7 @@
     <PackageReference Include="Microsoft.Azure.Devices.Provisioning.Transport.Amqp" Version="1.1.7" />
     <PackageReference Include="Microsoft.Azure.Devices.Provisioning.Transport.Http" Version="1.1.5" />
     <PackageReference Include="Microsoft.Azure.Devices.Provisioning.Transport.Mqtt" Version="1.1.7" />
+    <PackageReference Include="MQTTnet" Version="3.0.2" />
   </ItemGroup>
 
   <ItemGroup>
